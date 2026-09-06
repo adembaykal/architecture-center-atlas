@@ -1,0 +1,25 @@
+Architecture Atlas for SAP Architecture Center
+Copyright 2024 Adem Baykal
+
+This product includes architecture content, metadata, and diagram source files
+derived from the SAP Architecture Center repository:
+
+  https://github.com/SAP/architecture-center
+
+  Copyright SAP SE and SAP Architecture Center contributors
+  Licensed under the Apache License, Version 2.0
+
+The architecture content (reference architecture documents, diagrams, metadata)
+is sourced from the above repository and is used in accordance with the
+Apache License 2.0 terms. The preview images included in this repository are
+rendered from the draw.io source files provided in the upstream repository.
+
+This product uses the following open source libraries:
+
+  Cytoscape.js — https://cytoscape.org/
+  Copyright 2016-2024 The Cytoscape Consortium
+  Licensed under the MIT License
+
+  cytoscape-fcose — https://github.com/iVis-at-Bilkent/cytoscape.js-fcose
+  Copyright 2018 iVis-at-Bilkent
+  Licensed under the MIT License

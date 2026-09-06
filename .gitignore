@@ -1,0 +1,30 @@
+# Dependency directory
+node_modules/
+
+# External source repo (never commit)
+data/source/
+
+# Generated graph (Knowledge Graph — not part of public Atlas release)
+data/architecture-graph.json
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Secrets and local config
+.env
+.env.*
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp

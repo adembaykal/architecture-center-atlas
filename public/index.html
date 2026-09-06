@@ -1,0 +1,2211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP Architecture Atlas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+<script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Joule/ArchScan light palette */
+  --bg:        #F5F7FA;
+  --bg2:       #FFFFFF;
+  --surface:   #FFFFFF;
+  --surface2:  #F0F4F8;
+  --border:    #D9E1EA;
+  --border2:   #C4CFD9;
+  --text:      #1A1F2E;
+  --text2:     #556B82;
+  --text3:     #8FA3B4;
+  --accent:    #0070F2;
+  --accent2:   #0050B4;
+
+  /* Domain colours — slightly muted for light bg */
+  --ai:          #7C3AED;
+  --appdev:      #0D9373;
+  --data:        #B45309;
+  --integration: #1D4ED8;
+  --opsec:       #DC2626;
+
+  --bar-h: 56px;
+  --panel-w: 400px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 24px rgba(0,0,0,0.10);
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); }
+body { font-family: "72", "Helvetica Neue", -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ════════════════════════════════════════════════════
+   TOP BAR
+════════════════════════════════════════════════════ */
+#bar {
+  height: var(--bar-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 200;
+}
+
+.logo { font-size: 13px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; color: var(--text); }
+.logo span { color: var(--accent); }
+.bar-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+.search-wrap { position: relative; flex: 0 1 240px; }
+.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text3); }
+#search {
+  width: 100%; padding: 6px 10px 6px 32px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 7px; font-size: 13px; color: var(--text);
+  outline: none; transition: border-color .15s;
+}
+#search::placeholder { color: var(--text3); }
+#search:focus { border-color: var(--accent); background: #fff; }
+
+/* filter chips */
+.filter-row { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-row > span { color: var(--text2); font-size: 11px; font-weight: 600; white-space: nowrap; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border-radius: 6px;
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+  cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text3);
+  transition: background .1s, border-color .1s, color .1s, box-shadow .1s;
+  user-select: none;
+}
+/* HOVER — visible but clearly weaker than active */
+.chip:hover {
+  border-color: var(--border2);
+  color: var(--text2);
+  background: var(--surface2);
+}
+.chip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── ACTIVE: solid, unambiguous ── */
+/* Partner / Updated chips (SAP Blue) */
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.chip.active:hover {
+  background: var(--accent2);
+  border-color: var(--accent2);
+}
+
+/* Domain chips — solid domain colour */
+.chip[data-domain="ai"].active {
+  background: #7C3AED; border-color: #7C3AED; color: #fff;
+}
+.chip[data-domain="ai"].active:hover { background: #6D28D9; border-color: #6D28D9; }
+
+.chip[data-domain="appdev"].active {
+  background: #0D9373; border-color: #0D9373; color: #fff;
+}
+.chip[data-domain="appdev"].active:hover { background: #0A7A60; border-color: #0A7A60; }
+
+.chip[data-domain="data"].active {
+  background: #B45309; border-color: #B45309; color: #fff;
+}
+.chip[data-domain="data"].active:hover { background: #92400E; border-color: #92400E; }
+
+.chip[data-domain="integration"].active {
+  background: #1D4ED8; border-color: #1D4ED8; color: #fff;
+}
+.chip[data-domain="integration"].active:hover { background: #1E40AF; border-color: #1E40AF; }
+
+.chip[data-domain="opsec"].active {
+  background: #DC2626; border-color: #DC2626; color: #fff;
+}
+.chip[data-domain="opsec"].active:hover { background: #B91C1C; border-color: #B91C1C; }
+
+/* dot colour inverted on active domain chips */
+.chip[data-domain].active .chip-dot { background: rgba(255,255,255,.6) !important; }
+
+.partner-chip { gap: 4px; }
+.partner-label { font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+
+/* recent-filters active: SAP blue solid (same as partner) */
+#recent-filters .chip { border-radius: 6px; font-size: 11px; font-weight: 500; padding: 4px 12px; }
+#recent-filters .chip.active {
+  background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+}
+#recent-filters .chip.active:hover { background: var(--accent2); border-color: var(--accent2); }
+
+.bar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+#count-badge {
+  font-size: 11px; color: var(--text2); white-space: nowrap;
+  background: var(--bg); border: 1px solid var(--border);
+  padding: 3px 10px; border-radius: 20px;
+}
+
+/* view toggles */
+.view-btn {
+  padding: 5px 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--text3);
+  transition: all .12s; display: flex; align-items: center;
+}
+.view-btn:hover { background: var(--surface2); color: var(--text2); }
+.view-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+
+/* ════════════════════════════════════════════════════
+   MAIN LAYOUT
+════════════════════════════════════════════════════ */
+/* #main defined in base styles above */
+
+/* ════════════════════════════════════════════════════
+   FOOTER
+════════════════════════════════════════════════════ */
+#site-footer {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11px; color: var(--text2);
+  flex-shrink: 0;
+}
+#site-footer a { color: var(--text2); text-decoration: none; }
+#site-footer a:hover { color: var(--accent); text-decoration: underline; }
+.footer-sep { color: var(--border2); }
+
+/* ════════════════════════════════════════════════════
+   CONTENT AREA
+════════════════════════════════════════════════════ */
+#content {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+#content::-webkit-scrollbar { width: 5px; }
+#content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ════════════════════════════════════════════════════
+   VIEW: GALLERY
+════════════════════════════════════════════════════ */
+#view-gallery { padding: 28px 28px 60px; }
+
+.section-heading {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text2);
+  margin-bottom: 16px; padding-left: 2px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.ra-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ra-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.ra-card:hover {
+  border-color: var(--border2);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.ra-card:hover::before { opacity: 1; }
+.ra-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,112,242,.12), var(--shadow-md);
+}
+.ra-card.selected::before { opacity: 1; }
+
+/* domain accent line colour */
+.ra-card[data-primary="ai"]::before          { background: var(--ai); }
+.ra-card[data-primary="appdev"]::before      { background: var(--appdev); }
+.ra-card[data-primary="data"]::before        { background: var(--data); }
+.ra-card[data-primary="integration"]::before { background: var(--integration); }
+.ra-card[data-primary="opsec"]::before       { background: var(--opsec); }
+
+/* ── Card Preview Image ── */
+.card-preview {
+  width: 100%; aspect-ratio: 16/9;
+  overflow: hidden; position: relative;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  flex-shrink: 0;
+  cursor: default;
+}
+.card-preview img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top left;
+  display: block;
+  transition: transform .3s ease;
+  pointer-events: none;
+  position: relative; z-index: 0;
+}
+.card-zoom-btn {
+  position: absolute; bottom: 8px; right: 8px;
+  width: 28px; height: 28px; border-radius: 6px;
+  background: rgba(255,255,255,.92); border: 1.5px solid var(--accent);
+  color: var(--accent); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+  z-index: 3;
+}
+.card-zoom-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.card-rel-btn {
+  position: absolute; bottom: 8px; left: 8px;
+  width: 28px; height: 28px; border-radius: 6px;
+  background: rgba(255,255,255,.92); border: 1.5px solid var(--accent);
+  color: var(--accent); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+  z-index: 3;
+}
+.card-rel-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.card-preview img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top left;
+  display: block;
+  transition: transform .3s ease;
+}
+.ra-card:hover .card-preview img { transform: scale(1.02); }
+.card-preview-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #F5F7FA 0%, #EEF2F7 100%);
+}
+.card-preview-placeholder svg { opacity: .18; }
+
+/* ── Card Body ── */
+.card-body {
+  padding: 14px 16px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+  flex: 1;
+}
+
+.card-top { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; }
+.card-domains { display: flex; gap: 4px; flex-wrap: wrap; }
+.domain-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex-shrink: 0; margin-top: 3px;
+}
+.card-diagram-badge {
+  font-size: 10px; color: var(--text2); background: var(--bg);
+  border: 1px solid var(--border); padding: 2px 7px; border-radius: 4px;
+  white-space: nowrap; flex-shrink: 0; font-weight: 500;
+}
+
+.card-title {
+  font-size: 13px; font-weight: 700; line-height: 1.4;
+  color: var(--text); letter-spacing: -.01em;
+}
+
+.card-desc {
+  font-size: 12px; line-height: 1.55; color: var(--text2);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.card-footer {
+  display: flex; align-items: center; gap: 6px; margin-top: 2px;
+  flex-wrap: wrap;
+}
+.tag-pill {
+  font-size: 10px; padding: 2px 7px; border-radius: 4px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text2); white-space: nowrap; font-weight: 500;
+}
+.card-date {
+  margin-left: auto; font-size: 10px; color: var(--text2); white-space: nowrap;
+}
+
+/* compare checkbox — always visible */
+.compare-check {
+  position: absolute; top: 10px; right: 10px;
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 1.5px solid var(--accent);
+  background: rgba(255,255,255,0.92); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s; opacity: 1;
+  z-index: 2;
+}
+.ra-card:hover .compare-check {
+  border-width: 2px; background: #fff;
+}
+.ra-card.in-compare .compare-check {
+  background: var(--accent); border-color: var(--accent);
+}
+.compare-check svg { display: none; }
+.ra-card.in-compare .compare-check svg { display: block; }
+
+/* ════════════════════════════════════════════════════
+   VIEW: ATLAS (cluster map)
+════════════════════════════════════════════════════ */
+#view-atlas {
+  padding: 28px 28px 60px;
+  display: none;
+}
+
+.atlas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.domain-cluster {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all .2s;
+}
+.domain-cluster:hover { border-color: var(--border2); }
+
+.cluster-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.cluster-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.cluster-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.cluster-count { font-size: 11px; color: var(--text2); margin-left: auto; }
+.cluster-expand { color: var(--text3); transition: transform .2s; margin-left: 8px; }
+.domain-cluster.expanded .cluster-expand { transform: rotate(180deg); }
+
+.cluster-items { padding: 8px 10px; display: none; }
+.domain-cluster.expanded .cluster-items { display: block; }
+
+.cluster-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border-radius: 7px;
+  cursor: pointer; transition: background .12s;
+  font-size: 12px; color: var(--text2);
+}
+.cluster-item:hover { background: var(--surface2); color: var(--text); }
+.cluster-item.selected { background: var(--surface2); color: var(--text); }
+.cluster-item-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.cluster-item-diagram { margin-left: auto; font-size: 9px; color: var(--text2); }
+
+/* Global Atlas view — deduplicated flat list */
+.atlas-global-grid { display: flex; flex-direction: column; gap: 1px; }
+.atlas-global-item { flex-wrap: wrap; align-items: center; }
+.atlas-domain-chips {
+  display: flex; flex-wrap: wrap; gap: 3px; margin-left: auto;
+}
+.atlas-domain-chip {
+  font-size: 9px; font-weight: 600; padding: 1px 5px;
+  border-radius: 3px; border: 1px solid; white-space: nowrap;
+}
+
+/* ════════════════════════════════════════════════════
+   ACTIVE FILTER SUMMARY (below bar)
+════════════════════════════════════════════════════ */
+#filter-summary {
+  display: none;
+  align-items: center; gap: 8px;
+  padding: 6px 20px;
+  background: #EBF3FF;
+  border-bottom: 1px solid rgba(0,112,242,.15);
+  font-size: 11px; color: var(--text2);
+  flex-shrink: 0;
+}
+#filter-summary.visible { display: flex; }
+#filter-summary-text { color: var(--accent2); font-weight: 600; }
+.btn-clear-all {
+  margin-left: auto;
+  font-size: 11px; font-weight: 600;
+  color: var(--text2); background: none; border: none;
+  cursor: pointer; padding: 2px 6px; border-radius: 5px;
+  transition: color .12s;
+}
+.btn-clear-all:hover { color: var(--text); }
+
+/* ════════════════════════════════════════════════════
+   COMPARE BAR
+════════════════════════════════════════════════════ */
+#compare-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 28px;
+  transform: translateY(100%);
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
+  z-index: 300;
+}
+#compare-bar.visible { transform: translateY(0); }
+.compare-bar-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text2); white-space: nowrap; flex-shrink: 0;
+}
+.compare-bar-items { display: flex; gap: 6px; flex: 1; overflow: hidden; }
+.compare-bar-item {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 12px 5px 10px;
+  font-size: 12px; color: var(--text); max-width: 220px;
+  flex-shrink: 0;
+}
+.compare-bar-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-bar-remove {
+  color: var(--text3); cursor: pointer; flex-shrink: 0;
+  transition: color .1s; background: none; border: none; padding: 0;
+  display: flex; margin-left: 2px;
+}
+.compare-bar-remove:hover { color: var(--text); }
+.compare-bar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.btn-compare {
+  padding: 8px 20px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  background: var(--accent); color: #fff; border: none; cursor: pointer;
+  transition: background .15s; white-space: nowrap;
+  letter-spacing: -.01em;
+}
+.btn-compare:hover { background: var(--accent2); color: #fff; }
+.btn-compare-clear {
+  padding: 8px 14px; border-radius: 7px; font-size: 12px; font-weight: 500;
+  background: transparent; color: var(--text2);
+  border: 1px solid var(--border); cursor: pointer;
+  transition: all .12s; white-space: nowrap;
+}
+.btn-compare-clear:hover { color: var(--text2); border-color: var(--border2); }
+
+/* ════════════════════════════════════════════════════
+   DETAIL PANEL
+════════════════════════════════════════════════════ */
+#panel {
+  width: var(--panel-w);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transform: translateX(var(--panel-w));
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+}
+#panel.open { transform: translateX(0); }
+
+#panel-head {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-head-top {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-bottom: 8px;
+}
+.panel-close {
+  margin-left: auto; flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  color: var(--text3); padding: 2px; display: flex;
+  transition: color .1s;
+}
+.panel-close:hover { color: var(--text); }
+.panel-domains { display: flex; gap: 5px; flex-wrap: wrap; }
+.domain-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: .04em;
+  padding: 3px 9px; border-radius: 4px; text-transform: uppercase;
+}
+.domain-badge[data-domain="ai"]          { background: #F3F0FF; color: #6D28D9; }
+.domain-badge[data-domain="appdev"]      { background: #ECFDF5; color: #065F46; }
+.domain-badge[data-domain="data"]        { background: #FFFBEB; color: #92400E; }
+.domain-badge[data-domain="integration"] { background: #EFF6FF; color: #1E40AF; }
+.domain-badge[data-domain="opsec"]       { background: #FEF2F2; color: #991B1B; }
+
+#panel-title {
+  font-size: 15px; font-weight: 800; line-height: 1.3;
+  letter-spacing: -.02em; color: var(--text);
+  margin-top: 0;
+}
+.panel-meta-row {
+  display: flex; gap: 12px; margin-top: 8px;
+  font-size: 11px; color: var(--text2); flex-wrap: wrap;
+}
+.panel-meta-row span { display: flex; align-items: center; gap: 4px; }
+
+#panel-body {
+  flex: 1; overflow-y: auto; padding: 18px 20px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+#panel-body::-webkit-scrollbar { width: 4px; }
+#panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.psec { margin-bottom: 20px; }
+.psec-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text2); margin-bottom: 8px;
+}
+.psec-text { font-size: 13px; line-height: 1.65; color: var(--text2); }
+
+.tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.ptag {
+  font-size: 11px; padding: 3px 9px; border-radius: 4px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text2);
+}
+.partner-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 3px 10px; border-radius: 4px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text2); font-weight: 600;
+}
+
+.similar-card {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 9px 10px; border-radius: 7px;
+  cursor: pointer; transition: background .1s;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  margin-bottom: 5px;
+}
+.similar-card:hover { background: var(--surface2); border-color: var(--border2); }
+.similar-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+.similar-title { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.35; }
+.similar-domains { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+#panel-foot {
+  padding: 14px 20px; border-top: 1px solid var(--border);
+  flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
+}
+.panel-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 14px; border-radius: 7px;
+  font-size: 13px; font-weight: 600;
+  text-decoration: none; border: none; cursor: pointer;
+  transition: all .12s;
+}
+.panel-btn-primary   { background: var(--accent); color: #fff; }
+.panel-btn-primary:hover { background: var(--accent2); color: #fff; }
+.panel-btn-secondary { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
+.panel-btn-secondary:hover { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+.panel-btn-relationships {
+  background: transparent; color: var(--accent); border: 1.5px solid var(--accent);
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.panel-btn-relationships:hover { background: var(--accent); color: #fff; }
+.panel-btn-compare   { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.panel-btn-compare:hover { background: var(--surface2); color: var(--text); }
+
+/* ════════════════════════════════════════════════════
+   PANEL DIAGRAM PREVIEW
+════════════════════════════════════════════════════ */
+#panel-preview {
+  flex-shrink: 0;
+  background: #fff;
+  position: relative;
+  overflow: hidden;
+  cursor: zoom-in;
+  border-bottom: 1px solid var(--border);
+}
+#panel-preview img {
+  width: 100%; display: block;
+  max-height: 280px; object-fit: contain; object-position: center top;
+  transition: transform .3s ease;
+  padding: 16px 16px 12px;
+  box-sizing: border-box;
+}
+#panel-preview:hover img { transform: scale(1.03); }
+#panel-preview-placeholder {
+  height: 100px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+#panel-preview-placeholder svg { opacity: .12; }
+
+/* ── Lightbox ── */
+#preview-lightbox {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(10,10,20,.75); align-items: center; justify-content: center;
+  cursor: zoom-out; backdrop-filter: blur(4px);
+}
+#preview-lightbox.open { display: flex; }
+#preview-lightbox img {
+  max-width: 92vw; max-height: 92vh;
+  border-radius: 10px; box-shadow: 0 24px 80px rgba(0,0,0,.5);
+  background: #fff; padding: 8px;
+}
+
+/* ════════════════════════════════════════════════════
+   FULLSCREEN VIEWER
+════════════════════════════════════════════════════ */
+#fs-viewer {
+  display: none; position: fixed; inset: 0; z-index: 600;
+  background: var(--bg);
+  flex-direction: column;
+  pointer-events: none;
+}
+#fs-viewer.open { display: flex; pointer-events: all; }
+
+/* Top bar */
+#fs-bar {
+  height: 56px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+#fs-title-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+#fs-title {
+  font-size: 14px; font-weight: 700; letter-spacing: -.015em;
+  color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#fs-meta { display: flex; gap: 8px; align-items: center; }
+
+/* View toggle — clear active state */
+#fs-tabs {
+  display: flex; gap: 4px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px; padding: 3px;
+  flex-shrink: 0;
+}
+.fs-tab {
+  padding: 5px 16px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: none; background: transparent; color: var(--text2);
+  transition: all .15s; white-space: nowrap;
+}
+.fs-tab:hover:not(.active) { background: var(--surface2); color: var(--text2); }
+.fs-tab.active {
+  background: var(--accent); color: #fff; font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,112,242,.25);
+}
+
+#fs-bar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.fs-btn {
+  padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border); background: transparent;
+  color: var(--text2); transition: all .12s; white-space: nowrap;
+  display: flex; align-items: center; gap: 5px;
+}
+.fs-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+.fs-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.fs-btn-primary:hover { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.fs-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+/* Diagram pane */
+#fs-diagram {
+  flex: 1; position: relative; overflow: hidden;
+  background: #fff; display: flex; align-items: center; justify-content: center;
+}
+#fs-img-wrap {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: grab; user-select: none;
+}
+#fs-img-wrap.grabbing { cursor: grabbing; }
+#fs-img {
+  max-width: none; max-height: none;
+  transform-origin: center center;
+  pointer-events: none; display: block;
+}
+#fs-zoom-controls {
+  position: absolute; bottom: 20px; right: 20px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.fs-zoom-btn {
+  width: 34px; height: 34px; border-radius: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; font-weight: 500; color: var(--text2);
+  box-shadow: var(--shadow); transition: all .1s;
+  user-select: none;
+}
+.fs-zoom-btn:hover { background: var(--surface2); color: var(--text); }
+#fs-zoom-label {
+  font-size: 10px; color: var(--text2); text-align: center;
+  padding: 2px; font-weight: 600;
+}
+.fs-no-diagram {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  color: var(--text2); font-size: 13px;
+}
+
+/* Relationships pane */
+#fs-graph {
+  flex: 1; position: relative; display: none; overflow: hidden;
+}
+#fs-graph.active { display: flex; flex-direction: column; }
+#fs-diagram { flex: 1; position: relative; overflow: hidden;
+  background: #fff; display: none; align-items: center; justify-content: center;
+}
+#fs-diagram.active { display: flex; }
+
+#cy-context {
+  flex: 1; width: 100%; min-height: 300px;
+  background: var(--bg);
+}
+
+/* Graph tooltip */
+#ctx-tip {
+  position: absolute; pointer-events: none;
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: var(--shadow-md); border-radius: 8px;
+  padding: 8px 12px; max-width: 240px;
+  display: none; z-index: 10;
+}
+#ctx-tip.show { display: block; }
+#ctx-tip-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+#ctx-tip-why { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+/* Graph legend */
+#ctx-legend {
+  position: absolute; bottom: 20px; left: 20px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 11px; color: var(--text2);
+  box-shadow: var(--shadow);
+}
+#ctx-legend-title {
+  font-weight: 700; color: var(--text2); margin-bottom: 7px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+}
+.ctx-leg-row { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+.ctx-leg-line { height: 2px; width: 20px; flex-shrink: 0; border-radius: 1px; }
+
+/* Graph history nav */
+#ctx-nav {
+  position: absolute; top: 14px; left: 14px;
+  display: flex; gap: 6px;
+}
+.ctx-nav-btn {
+  padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text2); box-shadow: var(--shadow); transition: all .1s;
+}
+.ctx-nav-btn:hover { color: var(--text); border-color: var(--border2); }
+.ctx-nav-btn:disabled { opacity: .35; cursor: default; }
+
+/* ════════════════════════════════════════════════════
+   COMPARE COL — Diagram Preview
+════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   COMPARE VIEW (overlay)
+════════════════════════════════════════════════════ */
+#compare-view {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 400;
+  display: flex; flex-direction: column;
+  transform: translateY(100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+#compare-view.open { transform: translateY(0); }
+
+#compare-header {
+  height: 56px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 20px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+#compare-header h2 {
+  font-size: 15px; font-weight: 700; letter-spacing: -.02em;
+  color: var(--text);
+}
+.btn-close-compare {
+  margin-left: auto; display: flex; align-items: center; gap: 7px;
+  padding: 7px 16px; border-radius: 7px; font-size: 12px; font-weight: 500;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer; transition: all .12s;
+}
+.btn-close-compare:hover { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+
+#compare-body {
+  flex: 1; overflow-y: auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  align-items: start;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+
+.compare-col {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-height: 100%;
+}
+.compare-col:last-child { border-right: none; }
+
+.compare-col-diagram {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden; cursor: zoom-in;
+  aspect-ratio: 16/9;
+  display: flex; align-items: center; justify-content: center;
+}
+.compare-col-diagram img {
+  width: 100%; height: 100%;
+  object-fit: contain; object-position: center top;
+  display: block;
+  transition: transform .3s ease;
+}
+.compare-col-diagram:hover img { transform: scale(1.02); }
+.compare-col-diagram-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+
+.compare-col-info {
+  padding: 20px 24px 24px; flex: 1; display: flex; flex-direction: column; gap: 14px;
+}
+.compare-col-domains { display: flex; flex-wrap: wrap; gap: 5px; }
+.compare-col-title {
+  font-size: 16px; font-weight: 700; color: var(--text);
+  line-height: 1.3; letter-spacing: -.02em;
+}
+.compare-col-desc {
+  font-size: 13px; line-height: 1.65; color: var(--text2);
+}
+.compare-col-meta {
+  display: flex; flex-direction: column; gap: 7px;
+  margin-top: 4px;
+}
+.compare-meta-row {
+  display: flex; gap: 8px; align-items: baseline;
+}
+.compare-meta-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text2); flex-shrink: 0; min-width: 88px;
+}
+.compare-meta-val {
+  font-size: 12px; color: var(--text); line-height: 1.5;
+}
+.compare-col-foot {
+  padding: 16px 24px; border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+/* ════════════════════════════════════════════════════
+   EMPTY STATE
+════════════════════════════════════════════════════ */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 300px; gap: 12px;
+  color: var(--text2); font-size: 13px;
+}
+
+/* ════════════════════════════════════════════════════
+   LOADING
+════════════════════════════════════════════════════ */
+#loading {
+  position: fixed; inset: 0; background: var(--bg);
+  z-index: 9999; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  transition: opacity .4s;
+}
+#loading.gone { opacity: 0; pointer-events: none; }
+.spin { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: sp .7s linear infinite; }
+@keyframes sp { to { transform: rotate(360deg); } }
+#loading p { font-size: 13px; color: var(--text3); }
+
+/* updated badge on cards */
+.card-updated-badge {
+  font-size: 10px; font-weight: 600; letter-spacing: .01em;
+  color: var(--appdev); white-space: nowrap;
+}
+
+/* scrollbar for content */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spin"></div><p>Loading Architecture Atlas…</p></div>
+
+<!-- TOP BAR -->
+<div id="bar">
+  <div class="logo">SAP Architecture <span>Atlas</span></div>
+  <div class="bar-sep"></div>
+
+  <div class="search-wrap">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search" type="search" placeholder="Search architectures…" autocomplete="off">
+  </div>
+
+  <div class="filter-row" id="domain-filters">
+    <span style="font-size:11px;color:var(--text3);white-space:nowrap">Domain:</span>
+    <div class="chip" data-domain="ai"><div class="chip-dot" style="background:var(--ai)"></div>AI & ML</div>
+    <div class="chip" data-domain="appdev"><div class="chip-dot" style="background:var(--appdev)"></div>App Dev</div>
+    <div class="chip" data-domain="data"><div class="chip-dot" style="background:var(--data)"></div>Data & Analytics</div>
+    <div class="chip" data-domain="integration"><div class="chip-dot" style="background:var(--integration)"></div>Integration</div>
+    <div class="chip" data-domain="opsec"><div class="chip-dot" style="background:var(--opsec)"></div>Operations & Security</div>
+  </div>
+
+  <div class="bar-sep"></div>
+
+  <div class="filter-row" id="partner-filters">
+    <span style="font-size:11px;color:var(--text3);white-space:nowrap">Partner:</span>
+    <div class="chip partner-chip" data-partner="aws"><span class="partner-label">AWS</span></div>
+    <div class="chip partner-chip" data-partner="azure"><span class="partner-label">Azure</span></div>
+    <div class="chip partner-chip" data-partner="gcp"><span class="partner-label">GCP</span></div>
+    <div class="chip partner-chip" data-partner="databricks"><span class="partner-label">Databricks</span></div>
+  </div>
+
+  <div class="bar-sep"></div>
+
+  <div class="filter-row" id="recent-filters">
+    <span style="font-size:11px;color:var(--text3);white-space:nowrap;margin-right:2px">Updated:</span>
+    <div class="chip" data-recent="30">Last 30 days</div>
+    <div class="chip" data-recent="60">60 days</div>
+    <div class="chip" data-recent="90">90 days</div>
+  </div>
+
+  <div class="bar-right">
+    <span id="count-badge"></span>
+    <div class="view-btn active" id="btn-gallery" title="Gallery view">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    </div>
+    <div class="view-btn" id="btn-atlas" title="Domain atlas view">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+
+  <!-- FILTER SUMMARY -->
+  <div id="filter-summary">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink:0"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+    <span id="filter-summary-text"></span>
+    <button class="btn-clear-all" id="btn-clear-all">Clear all</button>
+  </div>
+
+  <div id="content">
+
+    <!-- GALLERY VIEW -->
+    <div id="view-gallery">
+      <div class="section-heading" id="gallery-heading"></div>
+      <div class="card-grid" id="card-grid"></div>
+      <div class="empty-state" id="empty-state" style="display:none">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>No architectures match your filters</span>
+      </div>
+    </div>
+
+    <!-- ATLAS VIEW -->
+    <div id="view-atlas">
+      <div class="atlas-grid" id="atlas-grid"></div>
+    </div>
+
+  </div><!-- /#content -->
+  </div><!-- /col-wrapper -->
+
+  <!-- DETAIL PANEL -->
+  <div id="panel">
+    <div id="panel-head">
+      <div class="panel-head-top">
+        <div class="panel-domains" id="panel-domains"></div>
+        <button class="panel-close" id="panel-close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="panel-title"></div>
+      <div class="panel-meta-row" id="panel-meta"></div>
+    </div>
+    <div id="panel-preview"></div>
+    <div id="panel-body"></div>
+    <div id="panel-foot"></div>
+  </div>
+</div>
+
+<footer id="site-footer">
+  <span>Created by Adem Baykal</span>
+  <span class="footer-sep">·</span>
+  <a href="https://architecture.learning.sap.com" target="_blank" rel="noopener">Source: SAP Architecture Center</a>
+</footer>
+
+<!-- LIGHTBOX (kept for compare-view inline clicks) -->
+<div id="preview-lightbox">
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<!-- FULLSCREEN ARCHITECTURE VIEWER -->
+<div id="fs-viewer">
+  <!-- Top Bar -->
+  <div id="fs-bar">
+    <div id="fs-title-wrap">
+      <div id="fs-title"></div>
+      <div id="fs-meta"></div>
+    </div>
+    <div id="fs-tabs">
+      <button class="fs-tab active" data-tab="diagram">Diagram</button>
+      <button class="fs-tab" data-tab="relationships">Relationships</button>
+    </div>
+    <div id="fs-bar-right">
+      <a id="fs-arch-link" href="#" target="_blank" rel="noopener" class="fs-btn fs-btn-primary" style="display:none">
+        Open in Architecture Center ↗
+      </a>
+      <div class="fs-sep"></div>
+      <button class="fs-btn" id="fs-close">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- Diagram pane -->
+  <div id="fs-diagram" class="active">
+    <div id="fs-img-wrap">
+    </div>
+    <div id="fs-zoom-controls">
+      <div class="fs-zoom-btn" id="fs-zoom-in" title="Zoom in">+</div>
+      <div class="fs-zoom-btn" id="fs-zoom-out" title="Zoom out">−</div>
+      <div class="fs-zoom-btn" id="fs-zoom-fit" title="Fit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </div>
+      <div id="fs-zoom-label">100%</div>
+    </div>
+  </div>
+
+  <!-- Relationships pane (Cytoscape) -->
+  <div id="fs-graph">
+    <div id="cy-context"></div>
+    <div id="ctx-tip">
+      <div id="ctx-tip-title"></div>
+      <div id="ctx-tip-why"></div>
+    </div>
+    <div id="ctx-nav">
+      <button class="ctx-nav-btn" id="ctx-back" style="display:none">← Back</button>
+    </div>
+    <div id="ctx-legend">
+      <div id="ctx-legend-title">Relationship type</div>
+      <div class="ctx-leg-row"><div class="ctx-leg-line" style="background:#0070F2"></div>Same RA Group</div>
+      <div class="ctx-leg-row"><div class="ctx-leg-line" style="background:#0D9373"></div>Shared Domain</div>
+      <div class="ctx-leg-row"><div class="ctx-leg-line" style="background:#B45309;opacity:.7"></div>Shared Partner</div>
+      <div class="ctx-leg-row"><div class="ctx-leg-line" style="background:#8FA3B4;opacity:.6"></div>Shared Tags</div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE BAR -->
+<div id="compare-bar">
+  <span class="compare-bar-label">Compare</span>
+  <div class="compare-bar-items" id="compare-bar-items"></div>
+  <div class="compare-bar-actions">
+    <button class="btn-compare-clear" id="btn-compare-clear">Clear</button>
+    <button class="btn-compare" id="btn-compare-open">Open Comparison</button>
+  </div>
+</div>
+
+<!-- COMPARE VIEW -->
+<div id="compare-view">
+  <div id="compare-header">
+    <h2>Architecture Comparison</h2>
+    <button class="btn-close-compare" id="btn-close-compare">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      Close
+    </button>
+  </div>
+  <div id="compare-body"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════
+const DOMAIN_COLOR = {
+  ai: '#7C3AED', appdev: '#0D9373', data: '#B45309',
+  integration: '#1D4ED8', opsec: '#DC2626',
+};
+const DOMAIN_LABEL = {
+  ai: 'AI & ML', appdev: 'App Dev', data: 'Data & Analytics',
+  integration: 'Integration', opsec: 'Operations & Security',
+};
+const DOMAIN_EMOJI = { ai:'🤖', appdev:'⚙️', data:'📊', integration:'🔗', opsec:'🛡️' };
+
+const PARTNER_COLOR = {
+  aws:'#ff9900', azure:'#0078d4', gcp:'#4285f4',
+  ibm:'#1f70c1', databricks:'#ff3621', nvidia:'#76b900', snowflake:'#29b5e8',
+};
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let allDocs = [];
+let activeDomains = new Set();
+let activePartners = new Set();
+let searchQuery = '';
+let selectedId = null;
+let compareSet = new Set();
+let currentView = 'gallery';
+let recentDays = 0; // 0 = all, 30/60/90 = filter by days
+
+// ══════════════════════════════════════════════════════
+// LOAD
+// ══════════════════════════════════════════════════════
+async function loadData() {
+  const r = await fetch('./atlas-reference-architectures.json');
+  if (!r.ok) throw new Error('Atlas data not found. Run: npm run build-atlas');
+  const j = await r.json();
+  return j.documents;
+}
+
+// ══════════════════════════════════════════════════════
+// FILTER
+// ══════════════════════════════════════════════════════
+function filtered() {
+  const cutoff = recentDays > 0 ? Date.now() - recentDays * 86400000 : 0;
+  return allDocs.filter(doc => {
+    // AND-logic: doc must have ALL active domains
+    if (activeDomains.size > 0 && ![...activeDomains].every(d => doc.domains.includes(d))) return false;
+    if (activePartners.size > 0 && !doc.partners.some(p => activePartners.has(p))) return false;
+    if (cutoff > 0) {
+      const updated = doc.last_update?.date ? new Date(doc.last_update.date).getTime() : 0;
+      if (updated < cutoff) return false;
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!(doc.title.toLowerCase().includes(q) ||
+            (doc.description||'').toLowerCase().includes(q) ||
+            (doc.keywords||[]).join(' ').toLowerCase().includes(q) ||
+            doc.tags.join(' ').toLowerCase().includes(q))) return false;
+    }
+    return true;
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER GALLERY
+// ══════════════════════════════════════════════════════
+function renderGallery() {
+  const docs = filtered();
+  const grid = document.getElementById('card-grid');
+  const empty = document.getElementById('empty-state');
+  const heading = document.getElementById('gallery-heading');
+
+  const total = allDocs.length;
+  document.getElementById('count-badge').textContent =
+    docs.length === total ? `${total} architectures` : `${docs.length} of ${total}`;
+
+  heading.textContent = docs.length === total
+    ? `${total} Reference Architectures`
+    : `${docs.length} of ${total} Reference Architectures`;
+
+  if (!docs.length) {
+    grid.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = docs.map(doc => {
+    const primary = doc.domains[0] || 'appdev';
+    const color = DOMAIN_COLOR[primary] || '#60a5fa';
+    const dateStr = doc.last_update?.date
+      ? new Date(doc.last_update.date).toLocaleDateString('en', {year:'numeric',month:'short'})
+      : '';
+    const inCompare = compareSet.has(doc.id);
+    const isSelected = selectedId === doc.id;
+    const isNew = doc.last_update?.date && (Date.now() - new Date(doc.last_update.date).getTime()) < 30 * 86400000;
+
+    const previewSrc = `/previews/${doc.id}.png`;
+    const previewHtml = doc.has_diagram
+      ? `<div class="card-preview">
+           <img src="${previewSrc}" alt="" loading="lazy" decoding="async">
+           <button class="card-zoom-btn" onclick="event.stopPropagation();openFullscreen('${doc.id}')" title="Open diagram fullscreen">
+             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35M11 8v6M8 11h6"/></svg>
+           </button>
+           <button class="card-rel-btn" onclick="event.stopPropagation();openFullscreenRelationships('${doc.id}')" title="Explore relationships">
+             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 11.5 17 6.5M7 12.5l10 5"/></svg>
+           </button>
+         </div>`
+      : `<div class="card-preview">
+           <div class="card-preview-placeholder">
+             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.2">
+               <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+             </svg>
+           </div>
+           <button class="card-rel-btn" onclick="event.stopPropagation();openFullscreenRelationships('${doc.id}')" title="Explore relationships">
+             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 11.5 17 6.5M7 12.5l10 5"/></svg>
+           </button>
+         </div>`;
+
+    return `<div class="ra-card${isSelected?' selected':''}${inCompare?' in-compare':''}"
+      data-id="${doc.id}" data-primary="${primary}"
+      style="--card-color:${color}">
+      <div class="compare-check" data-id="${doc.id}" title="Add to compare">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      ${previewHtml}
+      <div class="card-body">
+        <div class="card-top">
+          <div class="card-domains">
+            ${doc.domains.map(d => `<div class="domain-dot" style="background:${DOMAIN_COLOR[d]||'#888'}" title="${DOMAIN_LABEL[d]||d}"></div>`).join('')}
+          </div>
+        </div>
+        <div class="card-title">${esc(doc.title)}</div>
+        ${doc.description ? `<div class="card-desc">${esc(doc.description)}</div>` : ''}
+        <div class="card-footer">
+          ${doc.partners.slice(0,3).map(p => `<span class="tag-pill" style="color:${PARTNER_COLOR[p]||'#888'}">${p.toUpperCase()}</span>`).join('')}
+          ${doc.tags.filter(t=>!['aws','azure','gcp','ibm','databricks','nvidia','snowflake'].includes(t) && !['genai','appdev','data','integration','security'].includes(t)).slice(0,2).map(t=>`<span class="tag-pill">${esc(t)}</span>`).join('')}
+          ${isNew ? `<span class="card-updated-badge">Updated recently</span>` : ''}
+          ${dateStr ? `<span class="card-date">${dateStr}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Events on cards — whole card opens panel, zoom-btn opens fullscreen
+  grid.querySelectorAll('.ra-card').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.compare-check')) return;
+      if (e.target.closest('.card-zoom-btn')) return;
+      selectDoc(el.dataset.id);
+    });
+  });
+
+  grid.querySelectorAll('.compare-check').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      toggleCompare(el.dataset.id);
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER ATLAS
+// ══════════════════════════════════════════════════════
+function renderAtlas() {
+  const docs = filtered();
+  const grid = document.getElementById('atlas-grid');
+
+  // When a specific domain filter is active → show domain clusters (no dedup needed)
+  if (activeDomains.size > 0) {
+    const domains = ['ai','appdev','data','integration','opsec'];
+    grid.innerHTML = domains.map(domain => {
+      if (!activeDomains.has(domain)) return '';
+      const domainDocs = docs.filter(d => d.domains.includes(domain));
+      if (!domainDocs.length) return '';
+      const color = DOMAIN_COLOR[domain];
+      return `<div class="domain-cluster expanded" data-domain="${domain}">
+        <div class="cluster-header">
+          <div class="cluster-icon" style="background:${color}22;">${DOMAIN_EMOJI[domain]}</div>
+          <div>
+            <div class="cluster-title" style="color:${color}">${DOMAIN_LABEL[domain]}</div>
+          </div>
+          <div class="cluster-count">${domainDocs.length} architectures</div>
+          <div class="cluster-expand">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="cluster-items">
+          ${domainDocs.map(doc => `
+            <div class="cluster-item${selectedId===doc.id?' selected':''}" data-id="${doc.id}">
+              <div class="cluster-item-dot" style="background:${color}"></div>
+              <span>${esc(doc.title)}</span>
+              ${doc.has_diagram ? `<span class="cluster-item-diagram">▦</span>` : ''}
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    // Global view — each doc exactly once, multi-domain chips shown
+    const seen = new Set();
+    const dedupedDocs = docs.filter(d => { if (seen.has(d.id)) return false; seen.add(d.id); return true; });
+
+    grid.innerHTML = `<div class="atlas-global-grid">
+      ${dedupedDocs.map(doc => {
+        const primary = doc.domains[0] || 'appdev';
+        const color = DOMAIN_COLOR[primary] || '#888';
+        return `<div class="cluster-item atlas-global-item${selectedId===doc.id?' selected':''}" data-id="${doc.id}">
+          <div class="cluster-item-dot" style="background:${color}"></div>
+          <span>${esc(doc.title)}</span>
+          <div class="atlas-domain-chips">
+            ${doc.domains.map(d => `<span class="atlas-domain-chip" style="background:${DOMAIN_COLOR[d]||'#888'}22;color:${DOMAIN_COLOR[d]||'#888'};border-color:${DOMAIN_COLOR[d]||'#888'}44">${DOMAIN_LABEL[d]||d}</span>`).join('')}
+          </div>
+          ${doc.has_diagram ? `<span class="cluster-item-diagram">▦</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Events
+  grid.querySelectorAll('.cluster-header').forEach(el => {
+    el.addEventListener('click', () => {
+      el.closest('.domain-cluster').classList.toggle('expanded');
+    });
+  });
+  grid.querySelectorAll('.cluster-item').forEach(el => {
+    el.addEventListener('click', () => selectDoc(el.dataset.id));
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// SELECT DOC → open panel
+// ══════════════════════════════════════════════════════
+function selectDoc(id) {
+  selectedId = id;
+  const doc = allDocs.find(d => d.id === id);
+  if (!doc) return;
+  // Update selected state directly on DOM — no full re-render
+  document.querySelectorAll('.ra-card, .cluster-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  openPanel(doc);
+}
+
+function openPanel(doc) {
+  const primary = doc.domains[0] || 'appdev';
+  const color = DOMAIN_COLOR[primary] || '#888';
+
+  // Domains badges
+  document.getElementById('panel-domains').innerHTML =
+    doc.domains.map(d => `<div class="domain-badge" data-domain="${d}">${DOMAIN_LABEL[d]||d}</div>`).join('');
+
+  document.getElementById('panel-title').textContent = doc.title;
+
+  // Preview
+  const prevEl = document.getElementById('panel-preview');
+  if (doc.has_diagram) {
+    const src = `/previews/${doc.id}.png`;
+    prevEl.innerHTML = `<img src="${src}" alt="Architecture diagram" loading="lazy">`;
+    prevEl.style.display = 'block';
+    prevEl.title = 'Click to open fullscreen viewer';
+    prevEl.onclick = () => openFullscreen(doc.id);
+  } else {
+    prevEl.innerHTML = `<div id="panel-preview-placeholder">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+      </svg>
+    </div>`;
+    prevEl.style.display = 'block';
+    prevEl.onclick = null;
+  }
+
+  // Meta row
+  const dateStr = doc.last_update?.date
+    ? new Date(doc.last_update.date).toLocaleDateString('en',{year:'numeric',month:'short',day:'numeric'})
+    : '';
+  document.getElementById('panel-meta').innerHTML = [
+    doc.ra_group ? `<span>📁 ${doc.ra_group}</span>` : '',
+    dateStr ? `<span>Updated ${dateStr}</span>` : '',
+    doc.contributors?.length ? `<span>${doc.contributors.length} contributor${doc.contributors.length>1?'s':''}</span>` : '',
+  ].filter(Boolean).join('');
+
+  // Body
+  let html = '';
+
+  if (doc.description) {
+    html += `<div class="psec"><div class="psec-label">About</div><div class="psec-text">${esc(doc.description)}</div></div>`;
+  }
+
+  if (doc.partners?.length) {
+    html += `<div class="psec"><div class="psec-label">Technology Partners</div><div class="tag-list">
+      ${doc.partners.map(p=>`<span class="partner-tag" style="border-color:${PARTNER_COLOR[p]||'#444'}22;color:${PARTNER_COLOR[p]||'#888'}">${p.toUpperCase()}</span>`).join('')}
+    </div></div>`;
+  }
+
+  // Other tags (non-partner, non-domain)
+  const otherTags = (doc.tags||[]).filter(t =>
+    !['aws','azure','gcp','ibm','databricks','nvidia','snowflake',
+      'genai','appdev','data','integration','security'].includes(t)
+  );
+  if (otherTags.length) {
+    html += `<div class="psec"><div class="psec-label">Tags</div><div class="tag-list">
+      ${otherTags.map(t=>`<span class="ptag">${esc(t)}</span>`).join('')}
+    </div></div>`;
+  }
+
+  if (doc.keywords?.length) {
+    html += `<div class="psec"><div class="psec-label">Keywords</div><div class="psec-text" style="font-size:12px">${doc.keywords.slice(0,8).join(', ')}</div></div>`;
+  }
+
+  if (doc.contributors?.length) {
+    html += `<div class="psec"><div class="psec-label">Contributors</div><div class="tag-list">
+      ${doc.contributors.slice(0,6).map(c=>`<span class="ptag">@${esc(c)}</span>`).join('')}
+    </div></div>`;
+  }
+
+  // Similar architectures (shared domains, exclude self)
+  const similar = allDocs
+    .filter(d => d.id !== doc.id && d.domains.some(dom => doc.domains.includes(dom)))
+    .sort((a,b) => {
+      const aShared = a.domains.filter(d=>doc.domains.includes(d)).length;
+      const bShared = b.domains.filter(d=>doc.domains.includes(d)).length;
+      return bShared - aShared;
+    })
+    .slice(0, 5);
+
+  if (similar.length) {
+    html += `<div class="psec"><div class="psec-label">Similar Architectures</div>
+      ${similar.map(s => {
+        const sp = s.domains[0]||'appdev';
+        return `<div class="similar-card" data-id="${s.id}">
+          <div class="similar-dot" style="background:${DOMAIN_COLOR[sp]||'#888'}"></div>
+          <div>
+            <div class="similar-title">${esc(s.title)}</div>
+            <div class="similar-domains">${s.domain_labels?.join(' · ')||''}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  document.getElementById('panel-body').innerHTML = html;
+
+  // Similar card clicks
+  document.querySelectorAll('.similar-card').forEach(el => {
+    el.addEventListener('click', () => selectDoc(el.dataset.id));
+  });
+
+  // Footer
+  const foot = document.getElementById('panel-foot');
+  const inCompare = compareSet.has(doc.id);
+  foot.innerHTML = `
+    ${doc.arch_center_url ? `<a href="${esc(doc.arch_center_url)}" target="_blank" rel="noopener" class="panel-btn panel-btn-primary">Open in Architecture Center ↗</a>` : ''}
+    <button class="panel-btn panel-btn-relationships" onclick="openFullscreenRelationships('${esc(doc.id)}')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 11.5 17 6.5M7 12.5l10 5"/></svg>
+      Explore Relationships
+    </button>
+    ${doc.source_url ? `<a href="${esc(doc.source_url)}" target="_blank" rel="noopener" class="panel-btn panel-btn-secondary">View on GitHub ↗</a>` : ''}
+    <button class="panel-btn panel-btn-compare" id="panel-compare-btn">${inCompare ? '✓ In Comparison' : '+ Add to Compare'}</button>
+  `;
+  document.getElementById('panel-compare-btn').addEventListener('click', () => {
+    toggleCompare(doc.id);
+    foot.querySelector('#panel-compare-btn').textContent =
+      compareSet.has(doc.id) ? '✓ In Comparison' : '+ Add to Compare';
+  });
+
+  document.getElementById('panel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  selectedId = null;
+  renderCurrent();
+}
+
+// ══════════════════════════════════════════════════════
+// COMPARE
+// ══════════════════════════════════════════════════════
+function toggleCompare(id) {
+  if (compareSet.has(id)) {
+    compareSet.delete(id);
+  } else {
+    if (compareSet.size >= 2) {
+      alert('You can compare up to 2 architectures. Remove one first.');
+      return;
+    }
+    compareSet.add(id);
+  }
+  // Update compare state directly on DOM — no full re-render
+  document.querySelectorAll('.ra-card').forEach(el => {
+    el.classList.toggle('in-compare', compareSet.has(el.dataset.id));
+  });
+  renderCompareBar();
+}
+
+function renderCompareBar() {
+  const bar = document.getElementById('compare-bar');
+  const items = document.getElementById('compare-bar-items');
+
+  if (compareSet.size === 0) {
+    bar.classList.remove('visible');
+    return;
+  }
+  bar.classList.add('visible');
+
+  items.innerHTML = [...compareSet].map(id => {
+    const doc = allDocs.find(d => d.id === id);
+    if (!doc) return '';
+    return `<div class="compare-bar-item">
+      <span class="compare-bar-item-name">${esc(doc.title)}</span>
+      <button class="compare-bar-remove" data-id="${id}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+
+  items.querySelectorAll('.compare-bar-remove').forEach(btn => {
+    btn.addEventListener('click', () => toggleCompare(btn.dataset.id));
+  });
+
+  const openBtn = document.getElementById('btn-compare-open');
+  openBtn.textContent = compareSet.size === 2 ? 'Compare Side by Side →' : `${compareSet.size} selected — add 1 more`;
+  openBtn.disabled = compareSet.size < 2;
+}
+
+function openCompareView() {
+  const docs = [...compareSet].map(id => allDocs.find(d => d.id === id)).filter(Boolean);
+  if (docs.length < 2) return;
+
+  const body = document.getElementById('compare-body');
+
+  body.innerHTML = docs.map(doc => {
+    const primary = doc.domains[0] || 'appdev';
+    const color = DOMAIN_COLOR[primary] || '#888';
+    const date = doc.last_update?.date
+      ? new Date(doc.last_update.date).toLocaleDateString('en', {year:'numeric', month:'long', day:'numeric'})
+      : '—';
+    const partners = doc.partners?.length ? doc.partners.map(p => p.toUpperCase()).join(', ') : '—';
+
+    const diagramHtml = doc.has_diagram
+      ? `<div class="compare-col-diagram" title="Click to open fullscreen viewer" onclick="openFullscreen('${doc.id}')">
+           <img src="./previews/${doc.id}.png" alt="" loading="lazy">
+         </div>`
+      : `<div class="compare-col-diagram" style="cursor:default">
+           <div class="compare-col-diagram-placeholder">
+             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1">
+               <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+             </svg>
+           </div>
+         </div>`;
+
+    return `<div class="compare-col">
+      ${diagramHtml}
+      <div class="compare-col-info">
+        <div class="compare-col-domains">
+          ${doc.domains.map(d => `<div class="domain-badge" data-domain="${d}">${DOMAIN_LABEL[d]||d}</div>`).join('')}
+        </div>
+        <div class="compare-col-title">${esc(doc.title)}</div>
+        ${doc.description ? `<div class="compare-col-desc">${esc(doc.description)}</div>` : ''}
+        <div class="compare-col-meta">
+          ${doc.domain_labels?.length ? `<div class="compare-meta-row">
+            <span class="compare-meta-label">Domains</span>
+            <span class="compare-meta-val">${esc(doc.domain_labels.join(', '))}</span>
+          </div>` : ''}
+          ${doc.partners?.length ? `<div class="compare-meta-row">
+            <span class="compare-meta-label">Partners</span>
+            <span class="compare-meta-val">${esc(partners)}</span>
+          </div>` : ''}
+          <div class="compare-meta-row">
+            <span class="compare-meta-label">Last Updated</span>
+            <span class="compare-meta-val">${esc(date)}</span>
+          </div>
+        </div>
+      </div>
+      ${doc.arch_center_url ? `<div class="compare-col-foot">
+        <a href="${esc(doc.arch_center_url)}" target="_blank" rel="noopener" class="panel-btn panel-btn-primary" style="width:100%;text-align:center;justify-content:center;box-sizing:border-box">Open in Architecture Center ↗</a>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('compare-view').classList.add('open');
+}
+
+// ══════════════════════════════════════════════════════
+// VIEW SWITCHING
+// ══════════════════════════════════════════════════════
+function renderCurrent() {
+  if (currentView === 'gallery') renderGallery();
+  else renderAtlas();
+  renderFilterSummary();
+}
+
+function renderFilterSummary() {
+  const bar = document.getElementById('filter-summary');
+  const txt = document.getElementById('filter-summary-text');
+
+  const parts = [];
+  if (activeDomains.size > 0) {
+    const labels = [...activeDomains].map(d => DOMAIN_LABEL[d] || d);
+    parts.push(activeDomains.size === 1
+      ? `Domain: ${labels[0]}`
+      : `Domains: ${labels.join(' AND ')}`);
+  }
+  if (activePartners.size > 0) {
+    parts.push(`Partner: ${[...activePartners].map(p=>p.toUpperCase()).join(' or ')}`);
+  }
+  if (recentDays > 0) {
+    parts.push(`Updated: last ${recentDays} days`);
+  }
+
+  if (parts.length === 0) {
+    bar.classList.remove('visible');
+    return;
+  }
+  bar.classList.add('visible');
+  txt.textContent = parts.join('  ·  ');
+}
+
+function switchView(v) {
+  currentView = v;
+  document.getElementById('view-gallery').style.display = v==='gallery' ? 'block' : 'none';
+  document.getElementById('view-atlas').style.display   = v==='atlas'   ? 'block' : 'none';
+  document.getElementById('btn-gallery').classList.toggle('active', v==='gallery');
+  document.getElementById('btn-atlas').classList.toggle('active', v==='atlas');
+  renderCurrent();
+}
+
+// ══════════════════════════════════════════════════════
+// UTIL
+// ══════════════════════════════════════════════════════
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════════════════
+// WIRE EVENTS
+// ══════════════════════════════════════════════════════
+function wireEvents() {
+  // Search
+  document.getElementById('search').addEventListener('input', e => {
+    searchQuery = e.target.value.trim();
+    renderCurrent();
+  });
+
+  // Domain filter chips
+  document.querySelectorAll('[data-domain]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const d = chip.dataset.domain;
+      if (!chip.classList.contains('chip')) return; // skip domain-badge in panel
+      if (activeDomains.has(d)) activeDomains.delete(d);
+      else activeDomains.add(d);
+      chip.classList.toggle('active', activeDomains.has(d));
+      renderCurrent();
+    });
+  });
+
+  // Partner filter chips
+  document.querySelectorAll('[data-partner]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const p = chip.dataset.partner;
+      if (activePartners.has(p)) activePartners.delete(p);
+      else activePartners.add(p);
+      chip.classList.toggle('active', activePartners.has(p));
+      renderCurrent();
+    });
+  });
+
+  // Recent filter chips (toggle: click same again to deactivate)
+  document.querySelectorAll('[data-recent]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const days = parseInt(chip.dataset.recent);
+      const alreadyActive = recentDays === days;
+      recentDays = alreadyActive ? 0 : days;
+      document.querySelectorAll('[data-recent]').forEach(c => c.classList.remove('active'));
+      if (!alreadyActive) chip.classList.add('active');
+      renderCurrent();
+    });
+  });
+
+  // Clear all filters
+  document.getElementById('btn-clear-all').addEventListener('click', () => {
+    activeDomains.clear(); activePartners.clear(); recentDays = 0;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    renderCurrent();
+  });
+
+  // View buttons
+  document.getElementById('btn-gallery').addEventListener('click', () => switchView('gallery'));
+  document.getElementById('btn-atlas').addEventListener('click', () => switchView('atlas'));
+
+  // Panel close
+  document.getElementById('panel-close').addEventListener('click', closePanel);
+
+  // Compare bar
+  document.getElementById('btn-compare-clear').addEventListener('click', () => {
+    compareSet.clear(); renderCompareBar(); renderCurrent();
+  });
+  document.getElementById('btn-compare-open').addEventListener('click', openCompareView);
+  document.getElementById('btn-close-compare').addEventListener('click', () => {
+    document.getElementById('compare-view').classList.remove('open');
+  });
+
+  // Lightbox close (used by compare inline clicks)
+  document.getElementById('preview-lightbox').addEventListener('click', () => {
+    document.getElementById('preview-lightbox').classList.remove('open');
+  });
+
+  // Fullscreen viewer events
+  wireFullscreen();
+}
+
+// ══════════════════════════════════════════════════════
+// FULLSCREEN VIEWER
+// Register fcose layout plugin once
+if (typeof cytoscapeFcose !== 'undefined') cytoscape.use(cytoscapeFcose);
+
+// ══════════════════════════════════════════════════════
+let fsDocId = null;
+let fsZoom = 1;
+let fsPan = { x: 0, y: 0 };
+let fsDrag = null;
+let fsCy = null;
+let fsGraphHistory = [];
+
+function openFullscreen(docId, initialTab = 'diagram') {
+  const doc = allDocs.find(d => d.id === docId);
+  if (!doc) return;
+  fsDocId = docId;
+  // Title & meta
+  document.getElementById('fs-title').textContent = doc.title;
+  const domains = doc.domains.map(d => DOMAIN_LABEL[d] || d).join(' · ');
+  const date = doc.last_update?.date
+    ? new Date(doc.last_update.date).toLocaleDateString('en', {year:'numeric', month:'short'})
+    : '';
+  document.getElementById('fs-meta').innerHTML = [
+    domains ? `<span style="font-size:11px;color:var(--text2)">${domains}</span>` : '',
+    date    ? `<span style="font-size:11px;color:var(--text2)">Updated ${date}</span>` : '',
+  ].filter(Boolean).join('<span style="font-size:11px;color:var(--border2);margin:0 5px">·</span>');
+
+  // Architecture Center link
+  const link = document.getElementById('fs-arch-link');
+  if (doc.arch_center_url) {
+    link.href = doc.arch_center_url;
+    link.style.display = '';
+  } else {
+    link.style.display = 'none';
+  }
+
+  // Load diagram
+  const wrap = document.getElementById('fs-img-wrap');
+  document.getElementById('fs-zoom-controls').style.display = '';
+  if (doc.has_diagram) {
+    wrap.innerHTML = `<img id="fs-img" src="./previews/${doc.id}.png" alt="" draggable="false">`;
+    document.getElementById('fs-img').addEventListener('load', fsFit);
+  } else {
+    const primary = doc.domains[0] || 'appdev';
+    const color = DOMAIN_COLOR[primary] || '#888';
+    wrap.innerHTML = `<div class="fs-no-diagram">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <span>No diagram available for this architecture</span>
+    </div>`;
+  }
+
+  // Reset zoom
+  fsZoom = 1; fsPan = { x: 0, y: 0 };
+  applyFsTransform();
+
+  // Switch to initial tab
+  switchFsTab(initialTab);
+
+  // Reset graph history
+  fsGraphHistory = [docId];
+  document.getElementById('ctx-back').style.display = 'none';
+
+  document.getElementById('fs-viewer').classList.add('open');
+}
+
+function openFullscreenRelationships(docId) {
+  openFullscreen(docId, 'relationships');
+}
+
+function closeFullscreen() {
+  document.getElementById('fs-viewer').classList.remove('open');
+  // Destroy iframe to prevent it intercepting pointer events while hidden
+  document.getElementById('fs-img-wrap').innerHTML = '';
+  if (fsCy) { fsCy.destroy(); fsCy = null; }
+}
+
+function switchFsTab(tab) {
+  document.querySelectorAll('.fs-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('fs-diagram').classList.toggle('active', tab === 'diagram');
+  document.getElementById('fs-graph').classList.toggle('active', tab === 'relationships');
+  if (tab === 'relationships') {
+    // rAF ensures #fs-graph has rendered dimensions before Cytoscape measures it
+    requestAnimationFrame(() => buildContextGraph(fsDocId));
+  }
+}
+
+// ── Diagram zoom/pan ──────────────────────────────────
+function applyFsTransform() {
+  const img = document.getElementById('fs-img');
+  if (!img) return;
+  img.style.transform = `translate(${fsPan.x}px, ${fsPan.y}px) scale(${fsZoom})`;
+  document.getElementById('fs-zoom-label').textContent = Math.round(fsZoom * 100) + '%';
+}
+
+function fsFit() {
+  const wrap = document.getElementById('fs-diagram');
+  const img = document.getElementById('fs-img');
+  if (!img || !img.naturalWidth) { fsZoom = 1; fsPan = {x:0,y:0}; applyFsTransform(); return; }
+  const scaleX = (wrap.clientWidth  - 40) / img.naturalWidth;
+  const scaleY = (wrap.clientHeight - 40) / img.naturalHeight;
+  fsZoom = Math.min(scaleX, scaleY, 1);
+  fsPan = {x:0, y:0};
+  applyFsTransform();
+}
+
+function wireFullscreen() {
+  const viewer = document.getElementById('fs-viewer');
+
+  // Close button & ESC
+  document.getElementById('fs-close').addEventListener('click', closeFullscreen);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && viewer.classList.contains('open')) closeFullscreen();
+  });
+
+  // Tab switching
+  document.querySelectorAll('.fs-tab').forEach(btn => {
+    btn.addEventListener('click', () => switchFsTab(btn.dataset.tab));
+  });
+
+  // Zoom buttons
+  document.getElementById('fs-zoom-in').addEventListener('click', () => {
+    fsZoom = Math.min(fsZoom * 1.25, 8); applyFsTransform();
+  });
+  document.getElementById('fs-zoom-out').addEventListener('click', () => {
+    fsZoom = Math.max(fsZoom / 1.25, 0.1); applyFsTransform();
+  });
+  document.getElementById('fs-zoom-fit').addEventListener('click', fsFit);
+
+  // Scroll-to-zoom on diagram
+  document.getElementById('fs-diagram').addEventListener('wheel', e => {
+    if (!document.getElementById('fs-img')) return;
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    fsZoom = Math.min(Math.max(fsZoom * delta, 0.1), 8);
+    applyFsTransform();
+  }, { passive: false });
+
+  // Pan (drag)
+  const imgWrap = document.getElementById('fs-img-wrap');
+  imgWrap.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    if (!document.getElementById('fs-img')) return;
+    fsDrag = { sx: e.clientX - fsPan.x, sy: e.clientY - fsPan.y };
+    imgWrap.classList.add('grabbing');
+  });
+  document.addEventListener('mousemove', e => {
+    if (!fsDrag) return;
+    fsPan.x = e.clientX - fsDrag.sx;
+    fsPan.y = e.clientY - fsDrag.sy;
+    applyFsTransform();
+  });
+  document.addEventListener('mouseup', () => {
+    fsDrag = null;
+    document.getElementById('fs-img-wrap').classList.remove('grabbing');
+  });
+
+  // Back button
+  document.getElementById('ctx-back').addEventListener('click', () => {
+    if (fsGraphHistory.length < 2) return;
+    fsGraphHistory.pop();
+    const prev = fsGraphHistory[fsGraphHistory.length - 1];
+    document.getElementById('ctx-back').style.display = fsGraphHistory.length < 2 ? 'none' : '';
+    buildContextGraph(prev, false);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// CONTEXT GRAPH (Relationships)
+// ══════════════════════════════════════════════════════
+const NONMETA_TAGS = new Set(['aws','azure','gcp','ibm','databricks','nvidia','snowflake',
+  'genai','appdev','data','integration','security','cap','abap','eda','eic','build',
+  'buildworkzone','transition','bdc','successfactors','agents']);
+
+function computeRelationships(doc, maxNeighbors = 12) {
+  const scored = [];
+
+  for (const other of allDocs) {
+    if (other.id === doc.id) continue;
+    let score = 0;
+    const reasons = [];
+
+    // 1. Same RA group (strongest derived signal)
+    if (other.ra_group && other.ra_group === doc.ra_group) {
+      score += 40;
+      reasons.push({ type: 'ra_group', label: `Same group: ${doc.ra_group_title || doc.ra_group}` });
+    }
+
+    // 2. Shared domains
+    const sharedDomains = doc.domains.filter(d => other.domains.includes(d));
+    if (sharedDomains.length) {
+      score += sharedDomains.length * 15;
+      reasons.push({ type: 'domain', label: `Shared domain: ${sharedDomains.map(d => DOMAIN_LABEL[d]||d).join(', ')}` });
+    }
+
+    // 3. Shared partners
+    const sharedPartners = (doc.partners||[]).filter(p => (other.partners||[]).includes(p));
+    if (sharedPartners.length) {
+      score += sharedPartners.length * 12;
+      reasons.push({ type: 'partner', label: `Shared partner: ${sharedPartners.map(p=>p.toUpperCase()).join(', ')}` });
+    }
+
+    // 4. Shared non-meta tags
+    const docTags  = (doc.tags||[]).filter(t => !NONMETA_TAGS.has(t));
+    const otherTags = (other.tags||[]).filter(t => !NONMETA_TAGS.has(t));
+    const sharedTags = docTags.filter(t => otherTags.includes(t));
+    if (sharedTags.length) {
+      score += sharedTags.length * 5;
+      reasons.push({ type: 'tag', label: `Shared tags: ${sharedTags.slice(0,3).join(', ')}` });
+    }
+
+    if (score > 0) scored.push({ doc: other, score, reasons });
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, maxNeighbors);
+}
+
+function buildContextGraph(docId, pushHistory = true) {
+  const doc = allDocs.find(d => d.id === docId);
+  if (!doc) return;
+
+  if (pushHistory && fsGraphHistory[fsGraphHistory.length - 1] !== docId) {
+    fsGraphHistory.push(docId);
+    document.getElementById('ctx-back').style.display = fsGraphHistory.length < 2 ? 'none' : '';
+  }
+
+  const neighbors = computeRelationships(doc, 10);
+
+  const EDGE_COLOR = {
+    ra_group: '#0070F2',
+    domain:   '#0D9373',
+    partner:  '#B45309',
+    tag:      '#C4CEDB',
+  };
+
+  // ── Deterministisches Ring-Layout ───────────────────
+  // Nodes auf konzentrischen Ringen verteilen.
+  // Ring 1: bis 6 Nodes, Ring 2: Rest.
+  const N = neighbors.length;
+  const RING1_MAX = 6;
+  const NODE_W = 160;   // feste Breite für alle Related-Nodes
+  const NODE_H = 52;    // feste Höhe
+  const CW = 180;       // Center-Node Breite
+  const CH = 64;        // Center-Node Höhe
+
+  // Radius so wählen, dass Nodes auf Ring 1 nicht überlappen.
+  // Umfang Ring 1 muss >= N1 * (NODE_W + gap)
+  const GAP = 24;
+  const n1 = Math.min(N, RING1_MAX);
+  const n2 = N - n1;
+
+  // Mindestradius: Nodes passen auf den Umfang
+  const r1 = n1 > 0
+    ? Math.max(220, Math.ceil((n1 * (NODE_W + GAP)) / (2 * Math.PI)))
+    : 0;
+  const r2 = n2 > 0
+    ? Math.max(r1 + NODE_H + GAP + 60, Math.ceil((n2 * (NODE_W + GAP)) / (2 * Math.PI)))
+    : 0;
+
+  // Positionen berechnen — Ring 1 beginnt oben (−π/2), gleichmäßig verteilt
+  const positions = {};
+  positions[doc.id] = { x: 0, y: 0 };
+
+  for (let i = 0; i < n1; i++) {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / n1;
+    positions[neighbors[i].doc.id] = {
+      x: Math.round(r1 * Math.cos(angle)),
+      y: Math.round(r1 * Math.sin(angle)),
+    };
+  }
+  for (let i = 0; i < n2; i++) {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / n2;
+    positions[neighbors[n1 + i].doc.id] = {
+      x: Math.round(r2 * Math.cos(angle)),
+      y: Math.round(r2 * Math.sin(angle)),
+    };
+  }
+
+  // ── Elements ─────────────────────────────────────────
+  const elements = [];
+  const primary = doc.domains[0] || 'appdev';
+
+  elements.push({ group: 'nodes', data: {
+    id: doc.id, title: doc.title, type: 'center',
+    docId: doc.id, domainColor: DOMAIN_COLOR[primary] || '#0070F2',
+  }});
+
+  for (const { doc: other, reasons } of neighbors) {
+    const op = other.domains[0] || 'appdev';
+    const topReason = reasons[0];
+    const eType = topReason?.type || 'tag';
+    elements.push({ group: 'nodes', data: {
+      id: other.id, title: other.title, type: 'related',
+      docId: other.id, domainColor: DOMAIN_COLOR[op] || '#888',
+      edgeType: eType, reasons,
+    }});
+    elements.push({ group: 'edges', data: {
+      id: `e-${doc.id}-${other.id}`,
+      source: doc.id, target: other.id,
+      edgeType: eType,
+      color: EDGE_COLOR[eType] || '#C4CEDB',
+    }});
+  }
+
+  if (fsCy) { fsCy.destroy(); fsCy = null; }
+
+  fsCy = cytoscape({
+    container: document.getElementById('cy-context'),
+    elements,
+    style: [
+      // Center
+      {
+        selector: 'node[type="center"]',
+        style: {
+          'shape': 'roundrectangle',
+          'width': CW, 'height': CH,
+          'background-color': '#fff',
+          'border-width': 2.5, 'border-color': 'data(domainColor)',
+          'label': 'data(title)',
+          'font-size': 12, 'font-weight': 700,
+          'font-family': '"72","Helvetica Neue",sans-serif',
+          'color': '#1A1F2E',
+          'text-valign': 'center', 'text-halign': 'center',
+          'text-wrap': 'wrap', 'text-max-width': '160px',
+          'z-index': 100,
+        },
+      },
+      // Related
+      {
+        selector: 'node[type="related"]',
+        style: {
+          'shape': 'roundrectangle',
+          'width': NODE_W, 'height': NODE_H,
+          'background-color': '#fff',
+          'border-width': 1, 'border-color': '#D0DAE4',
+          'label': 'data(title)',
+          'font-size': 10, 'font-weight': 500,
+          'font-family': '"72","Helvetica Neue",sans-serif',
+          'color': '#1A1F2E',
+          'text-valign': 'center', 'text-halign': 'center',
+          'text-wrap': 'wrap', 'text-max-width': '144px',
+          'z-index': 10, 'cursor': 'pointer',
+          'transition-property': 'border-color,border-width,background-color,opacity',
+          'transition-duration': '100ms',
+        },
+      },
+      {
+        selector: 'node[type="related"].highlighted',
+        style: {
+          'border-color': 'data(domainColor)',
+          'border-width': 2,
+          'background-color': '#F5F7FA',
+          'z-index': 50,
+        },
+      },
+      // Edges — schlicht, kein Label
+      {
+        selector: 'edge',
+        style: {
+          'line-color': 'data(color)',
+          'width': 1,
+          'curve-style': 'straight',
+          'opacity': 0.55,
+          'target-arrow-shape': 'none',
+          'transition-property': 'opacity,width',
+          'transition-duration': '100ms',
+        },
+      },
+      { selector: 'edge.highlighted', style: { opacity: 1, width: 2 } },
+      { selector: 'node.dimmed',      style: { opacity: 0.4 } },
+      { selector: 'edge.dimmed',      style: { opacity: 0.1 } },
+    ],
+    layout: {
+      name: 'preset',
+      positions: node => positions[node.id()] || { x: 0, y: 0 },
+      animate: true,
+      animationDuration: 350,
+      fit: true,
+      padding: 40,
+    },
+    userZoomingEnabled: true,
+    userPanningEnabled: true,
+    boxSelectionEnabled: false,
+  });
+
+  // Tooltip für Relationship-Typ — erscheint beim Hover auf eine Edge
+  const tip = document.getElementById('ctx-tip');
+
+  fsCy.on('mouseover', 'node[type="related"]', e => {
+    const node = e.target;
+    const d = node.data();
+    const reasons = d.reasons || [];
+    // Tooltip
+    const pos = e.renderedPosition;
+    document.getElementById('ctx-tip-title').textContent = d.title;
+    document.getElementById('ctx-tip-why').innerHTML =
+      reasons.map(r => `<div>${r.label}</div>`).join('');
+    tip.style.left = (pos.x + 14) + 'px';
+    tip.style.top  = (pos.y - 8) + 'px';
+    tip.classList.add('show');
+    // Dim/highlight
+    fsCy.elements().addClass('dimmed');
+    node.removeClass('dimmed').addClass('highlighted');
+    node.connectedEdges().removeClass('dimmed').addClass('highlighted');
+    fsCy.$('node[type="center"]').removeClass('dimmed');
+  });
+
+  fsCy.on('mouseout', 'node[type="related"]', () => {
+    tip.classList.remove('show');
+    fsCy.elements().removeClass('dimmed highlighted');
+  });
+
+  // Single tap → Detail Panel
+  fsCy.on('tap', 'node[type="related"]', e => {
+    selectDoc(e.target.data('docId'));
+  });
+
+  // Double tap → neues Zentrum
+  fsCy.on('dbltap', 'node[type="related"]', e => {
+    const newId = e.target.data('docId');
+    const newDoc = allDocs.find(d => d.id === newId);
+    if (!newDoc) return;
+    fsDocId = newId;
+    openFullscreenMeta(newDoc);
+    buildContextGraph(newId, true);
+  });
+}
+
+function openFullscreenMeta(doc) {
+  document.getElementById('fs-title').textContent = doc.title;
+  const domains = doc.domains.map(d => DOMAIN_LABEL[d] || d).join(' · ');
+  const date = doc.last_update?.date
+    ? new Date(doc.last_update.date).toLocaleDateString('en', {year:'numeric', month:'short'})
+    : '';
+  document.getElementById('fs-meta').innerHTML = [
+    domains ? `<span style="font-size:11px;color:var(--text2)">${domains}</span>` : '',
+    date    ? `<span style="font-size:11px;color:var(--text2)">Updated ${date}</span>` : '',
+  ].filter(Boolean).join('<span style="font-size:11px;color:var(--border2);margin:0 5px">·</span>');
+  const link = document.getElementById('fs-arch-link');
+  if (doc.arch_center_url) { link.href = doc.arch_center_url; link.style.display = ''; }
+  else link.style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════
+// MAIN
+// ══════════════════════════════════════════════════════
+async function main() {
+  try {
+    allDocs = await loadData();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `
+      <div style="text-align:center">
+        <p style="font-size:15px;font-weight:700;color:#f87171;margin-bottom:8px">Data not found</p>
+        <p style="font-size:12px;color:#4a5568">Run: <code style="background:#1a2540;padding:3px 8px;border-radius:5px;color:#8b95a8">npm run build-atlas</code></p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('count-badge').textContent = `${allDocs.length} architectures`;
+  wireEvents();
+  renderGallery();
+  renderFilterSummary();
+
+  setTimeout(() => document.getElementById('loading').classList.add('gone'), 300);
+}
+
+main();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "sap-archcenter-knowledge-graph",
+  "version": "0.1.0",
+  "description": "Interactive knowledge graph for the SAP Architecture Center",
+  "scripts": {
+    "sync": "node scripts/sync.js",
+    "build": "node scripts/build-graph.js",
+    "start": "node scripts/serve.js",
+    "build-atlas": "node scripts/build-atlas-data.js",
+    "build-previews": "node scripts/build-previews.js",
+    "build-all": "npm run build-atlas && npm run build-previews",
+    "sync-and-build": "npm run sync && npm run build && npm run build-atlas"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0",
+    "marked": "^12.0.0"
+  },
+  "devDependencies": {},
+  "license": "Apache-2.0"
+}
