@@ -43,7 +43,7 @@ Click any architecture to open a detail panel with title, description, domains, 
 Open architecture diagrams in a fullscreen viewer with zoom, pan, and fit controls.
 
 ### Relationship Explorer
-Explore architecture relationships visually. Related architectures are arranged in a ring layout around the selected architecture. Relationships are derived from existing Architecture Center metadata — no AI-generated relationships are introduced.
+Explore architecture relationships visually. Related architectures are arranged around the selected architecture in a structured relationship map. Relationships are derived from existing Architecture Center metadata — no AI-generated relationships are introduced.
 
 **Relationship types:**
 - **Same RA Group** — architectures in the same reference architecture group
@@ -81,7 +81,7 @@ The Atlas dataset is generated from the source repository using `scripts/build-a
 ### Current dataset
 
 | Field | Value |
-|---|---|
+| --- | --- |
 | Architecture documents | 118 |
 | Source branch | main |
 | Source commit | `5cf553d6550423801d97dbeb0593a78970cbbc5d` |
@@ -93,7 +93,7 @@ Domain breakdown: AI & ML (36) · Application Dev. (58) · Data & Analytics (32)
 
 ## Technical Architecture
 
-Architecture Atlas is a static web application — no backend, no database, no build step required to run it.
+Architecture Atlas is a static web application — no backend, database, or runtime build step is required.
 
 - Static HTML, CSS, JavaScript
 - Generated JSON metadata (`atlas-reference-architectures.json`)
@@ -162,9 +162,12 @@ python3 -m http.server 3000 --directory public
 Architecture Atlas is designed for GitHub Pages. All asset paths are relative, so it works correctly under any repository subpath or custom domain.
 
 **GitHub Pages setup:**
-1. Push `public/` contents (or configure Pages to serve from `public/`)
-2. No further configuration needed
-3. Works with custom domains without any code changes
+
+Deployment is handled by `.github/workflows/deploy.yml` using GitHub Actions.
+
+1. In your repository, go to **Settings → Pages** and set the source to **GitHub Actions**
+2. Every push to `main` automatically triggers the workflow, which publishes the `public/` directory
+3. A custom domain can be added in the Pages settings without any changes to the application
 
 ---
 
@@ -172,15 +175,16 @@ Architecture Atlas is designed for GitHub Pages. All asset paths are relative, s
 
 Architecture Atlas is released under the **Apache License 2.0**.
 
-The architecture content, diagrams, and metadata are sourced from the [SAP Architecture Center repository](https://github.com/SAP/architecture-center), which is also licensed under the Apache License 2.0. See [NOTICE](./NOTICE) for required attribution.
+The architecture content, diagrams, and metadata are sourced from the [SAP Architecture Center repository](https://github.com/SAP/architecture-center), which is also licensed under the Apache License 2.0. See [NOTICE](./NOTICE) for source attribution and applicable notices.
 
 ---
 
 ## Disclaimer
 
-Architecture Atlas is a community project and is not an official SAP product. It is not affiliated with, endorsed by, or supported by SAP SE.
+Architecture Atlas is a community project and not an official SAP product.
+It is not an official SAP Architecture Center experience and is not endorsed or supported as an SAP product.
 
-The SAP Architecture Center at https://architecture.learning.sap.com/ remains the authoritative source for all reference architecture content. Always refer to the official source for the most current and complete information.
+The SAP Architecture Center remains the authoritative source for all reference architecture content.
 
 ---
 
