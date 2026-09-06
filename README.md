@@ -2,6 +2,8 @@
 
 A visual companion for exploring, comparing, and discovering SAP reference architectures.
 
+> **Current release: V1.0**
+
 > **Community project. Not an official SAP product.**  
 > The [SAP Architecture Center](https://architecture.learning.sap.com/) remains the authoritative source for all architecture content.
 
