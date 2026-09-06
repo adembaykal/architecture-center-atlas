@@ -422,10 +422,23 @@ body {
 .ra-card:hover .card-preview img { transform: scale(1.03); }
 .card-preview-placeholder {
   width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #EEF3FF 0%, #E8EFFD 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 11px;
+  background: linear-gradient(145deg, #EEF3FF 0%, #EBE8FA 100%);
 }
-.card-preview-placeholder svg { opacity: .14; }
+.placeholder-icon { flex-shrink: 0; }
+.placeholder-label {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  text-align: center; padding: 0 14px;
+}
+.placeholder-label-primary {
+  font-size: 11px; font-weight: 600; color: #1E3A5F;
+  letter-spacing: .01em; line-height: 1.3;
+}
+.placeholder-label-secondary {
+  font-size: 9.5px; font-weight: 400;
+  color: rgba(30,58,95,0.72); line-height: 1.3;
+}
 
 /* ── Card Body ── */
 .card-body {
@@ -768,10 +781,10 @@ body {
 }
 #panel-preview:hover img { transform: scale(1.025); }
 #panel-preview-placeholder {
-  height: 100px; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #EEF3FF 0%, #E8EFFD 100%);
+  height: 140px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  background: linear-gradient(145deg, #EEF3FF 0%, #EBE8FA 100%);
 }
-#panel-preview-placeholder svg { opacity: .1; }
 
 /* ── Lightbox ── */
 #preview-lightbox {
@@ -1347,9 +1360,26 @@ function renderGallery() {
          </div>`
       : `<div class="card-preview">
            <div class="card-preview-placeholder">
-             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.2">
-               <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+             <svg class="placeholder-icon" width="44" height="38" viewBox="0 0 44 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <!-- outer frame -->
+               <rect x="1" y="1" width="42" height="36" rx="3" stroke="#0050B3" stroke-width="1.4" opacity="0.25"/>
+               <!-- node A top-left -->
+               <rect x="6" y="8" width="10" height="7" rx="2" stroke="#0050B3" stroke-width="1.4" opacity="0.55"/>
+               <!-- node B top-right -->
+               <rect x="28" y="8" width="10" height="7" rx="2" stroke="#0050B3" stroke-width="1.4" opacity="0.55"/>
+               <!-- node C bottom-center -->
+               <rect x="17" y="23" width="10" height="7" rx="2" stroke="#5B2FBE" stroke-width="1.4" opacity="0.6"/>
+               <!-- connector A→C -->
+               <path d="M11 15 L22 23" stroke="#0050B3" stroke-width="1.2" opacity="0.35" stroke-linecap="round"/>
+               <!-- connector B→C -->
+               <path d="M33 15 L27 23" stroke="#0050B3" stroke-width="1.2" opacity="0.35" stroke-linecap="round"/>
+               <!-- connector A→B -->
+               <path d="M16 11.5 L28 11.5" stroke="#0050B3" stroke-width="1.2" opacity="0.25" stroke-linecap="round" stroke-dasharray="2 2"/>
              </svg>
+             <div class="placeholder-label">
+               <span class="placeholder-label-primary">No architecture diagram available</span>
+               <span class="placeholder-label-secondary">No diagram provided in the source</span>
+             </div>
            </div>
            <button class="card-rel-btn" onclick="event.stopPropagation();openFullscreenRelationships('${doc.id}')" title="Explore relationships">
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 11.5 17 6.5M7 12.5l10 5"/></svg>
@@ -1479,9 +1509,19 @@ function openPanel(doc) {
     prevEl.onclick = () => openFullscreen(doc.id);
   } else {
     prevEl.innerHTML = `<div id="panel-preview-placeholder">
-      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.2">
-        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+      <svg class="placeholder-icon" width="54" height="46" viewBox="0 0 44 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="42" height="36" rx="3" stroke="#0050B3" stroke-width="1.4" opacity="0.22"/>
+        <rect x="6" y="8" width="10" height="7" rx="2" stroke="#0050B3" stroke-width="1.4" opacity="0.5"/>
+        <rect x="28" y="8" width="10" height="7" rx="2" stroke="#0050B3" stroke-width="1.4" opacity="0.5"/>
+        <rect x="17" y="23" width="10" height="7" rx="2" stroke="#5B2FBE" stroke-width="1.4" opacity="0.58"/>
+        <path d="M11 15 L22 23" stroke="#0050B3" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+        <path d="M33 15 L27 23" stroke="#0050B3" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+        <path d="M16 11.5 L28 11.5" stroke="#0050B3" stroke-width="1.2" opacity="0.22" stroke-linecap="round" stroke-dasharray="2 2"/>
       </svg>
+      <div class="placeholder-label">
+        <span class="placeholder-label-primary">No architecture diagram available</span>
+        <span class="placeholder-label-secondary">No diagram provided in the source</span>
+      </div>
     </div>`;
     prevEl.style.display = 'block';
     prevEl.onclick = null;
@@ -1871,8 +1911,8 @@ function openFullscreen(docId, initialTab = 'diagram') {
 
   // Load diagram image
   const wrap = document.getElementById('fs-img-wrap');
-  document.getElementById('fs-zoom-controls').style.display = '';
   if (doc.has_diagram) {
+    document.getElementById('fs-zoom-controls').style.display = '';
     wrap.innerHTML = `<img id="fs-img" src="./previews/${doc.id}.png" alt="" draggable="false">`;
     // img.load fires after the viewer is open and tab is visible — safe to fit then
     document.getElementById('fs-img').addEventListener('load', () => {
@@ -1881,11 +1921,23 @@ function openFullscreen(docId, initialTab = 'diagram') {
       requestAnimationFrame(() => requestAnimationFrame(fsFit));
     });
   } else {
+    document.getElementById('fs-zoom-controls').style.display = 'none';
     const primary = doc.domains[0] || 'appdev';
     const color = DOMAIN_COLOR[primary] || '#888';
     wrap.innerHTML = `<div class="fs-no-diagram">
-      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-      <span>No diagram available for this architecture</span>
+      <svg width="66" height="56" viewBox="0 0 44 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="42" height="36" rx="3" stroke="#0050B3" stroke-width="1.4" opacity="0.22"/>
+        <rect x="6" y="8" width="10" height="7" rx="2" stroke="#0050B3" stroke-width="1.4" opacity="0.5"/>
+        <rect x="28" y="8" width="10" height="7" rx="2" stroke="#0050B3" stroke-width="1.4" opacity="0.5"/>
+        <rect x="17" y="23" width="10" height="7" rx="2" stroke="#5B2FBE" stroke-width="1.4" opacity="0.58"/>
+        <path d="M11 15 L22 23" stroke="#0050B3" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+        <path d="M33 15 L27 23" stroke="#0050B3" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+        <path d="M16 11.5 L28 11.5" stroke="#0050B3" stroke-width="1.2" opacity="0.22" stroke-linecap="round" stroke-dasharray="2 2"/>
+      </svg>
+      <div class="placeholder-label" style="align-items:center;text-align:center">
+        <span class="placeholder-label-primary" style="font-size:14px">No architecture diagram available</span>
+        <span class="placeholder-label-secondary" style="font-size:12px">No diagram provided in the source</span>
+      </div>
     </div>`;
   }
 
