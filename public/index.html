@@ -1225,7 +1225,7 @@ function renderGallery() {
     const isSelected = selectedId === doc.id;
     const isNew = doc.last_update?.date && (Date.now() - new Date(doc.last_update.date).getTime()) < 30 * 86400000;
 
-    const previewSrc = `/previews/${doc.id}.png`;
+    const previewSrc = `./previews/${doc.id}.png`;
     const previewHtml = doc.has_diagram
       ? `<div class="card-preview">
            <img src="${previewSrc}" alt="" loading="lazy" decoding="async">
@@ -1384,7 +1384,7 @@ function openPanel(doc) {
   // Preview
   const prevEl = document.getElementById('panel-preview');
   if (doc.has_diagram) {
-    const src = `/previews/${doc.id}.png`;
+    const src = `./previews/${doc.id}.png`;
     prevEl.innerHTML = `<img src="${src}" alt="Architecture diagram" loading="lazy">`;
     prevEl.style.display = 'block';
     prevEl.title = 'Click to open fullscreen viewer';
